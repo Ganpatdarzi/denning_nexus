@@ -1,0 +1,15 @@
+{
+  "name": "denning-nexus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Denning Nexus - a field-first learning network connecting students, teachers and admins.",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "reset:db": "node server/scripts/reset-db.js"
+  }
+}

@@ -1,0 +1,165 @@
+/**
+ * Seeded verification records make the admin review flow demonstrable without
+ * requiring a live upload. The documents are placeholders: `demo: true` tells
+ * the UI that no binary was stored with the seed.
+ */
+export const teacherApplications = [
+  {
+    id: 'tapp_ravi',
+    userId: 'u_ravi',
+    applicantName: 'Ravi Deshmukh',
+    email: 'ravi@denning.edu',
+    phone: '',
+    fieldSlug: 'technology',
+    headline: 'Robotics engineer moving from factory floors to the classroom.',
+    status: 'rejected_by_ai',
+    documents: [
+      {
+        id: 'tdoc_ravi_1',
+        fileName: 'ravi-teaching-licence-demo.pdf',
+        mimeType: 'application/pdf',
+        size: 184320,
+        storageKey: null,
+        storageBucket: null,
+        demo: true,
+        uploadedAt: '2026-10-21T09:12:00.000Z',
+      },
+    ],
+    aiVerdict: {
+      verdict: 'AI_DENIED',
+      confidence: 'HIGH',
+      recommendation:
+        'The document appears to be a workshop attendance certificate rather than a teaching licence, and the name on it does not match the applicant. A human should confirm before any decision.',
+      extracted: {
+        fullName: 'R. Deshmukh',
+        documentNumber: 'WS-2024-118',
+        issuingInstitution: 'Industrial Robotics Workshop Series',
+        issueDate: '2024-06-14',
+        expiryDate: '',
+        documentType: 'Workshop attendance certificate',
+        country: 'India',
+      },
+      checks: [
+        {
+          label: 'Document is a recognised teaching credential',
+          passed: false,
+          note: 'Described as a workshop attendance certificate, not a licence or degree.',
+        },
+        {
+          label: 'Name matches the applicant',
+          passed: false,
+          note: 'Only an initial and surname are visible; the full name cannot be confirmed.',
+        },
+        {
+          label: 'Document is readable',
+          passed: true,
+          note: 'All visible fields were readable.',
+        },
+        {
+          label: 'Issuing authority is identifiable',
+          passed: true,
+          note: 'Industrial Robotics Workshop Series is printed on the certificate.',
+        },
+      ],
+      reasons: [
+        'The uploaded document is not a teaching licence or qualification.',
+        'The document shows a workshop certificate instead of a credential.',
+        'The applicant name cannot be fully matched to the document.',
+      ],
+      redFlags: [
+        'Document type does not support a teaching application.',
+        'Name on document is incomplete and cannot be matched confidently.',
+      ],
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      promptVersion: 'teacher-verification-v1',
+      usage: { inputTokens: 1284, outputTokens: 412, totalTokens: 1696 },
+    },
+    aiHistory: [],
+    aiReviewedAt: '2026-10-21T09:13:04.000Z',
+    adminDecision: null,
+    decisionHistory: [],
+    decidedAt: null,
+    decidedBy: null,
+    notes: [],
+    createdAt: '2026-10-21T09:12:00.000Z',
+    updatedAt: '2026-10-21T09:13:04.000Z',
+  },
+  {
+    id: 'tapp_nadia',
+    userId: 'u_nadia',
+    applicantName: 'Nadia Hassan',
+    email: 'nadia@denning.edu',
+    phone: '',
+    fieldSlug: 'design',
+    headline: 'Service designer working where public services meet real life.',
+    status: 'pending_admin_review',
+    documents: [
+      {
+        id: 'tdoc_nadia_1',
+        fileName: 'nadia-degree-certificate-demo.png',
+        mimeType: 'image/png',
+        size: 241664,
+        storageKey: null,
+        storageBucket: null,
+        demo: true,
+        uploadedAt: '2026-10-22T14:05:00.000Z',
+      },
+    ],
+    aiVerdict: {
+      verdict: 'AI_NEEDS_REVIEW',
+      confidence: 'MEDIUM',
+      recommendation:
+        'The degree certificate is readable and the name is close to the applicant name. The issuing institution is partly obscured, so a human should confirm it before approval.',
+      extracted: {
+        fullName: 'Nadia Hassan',
+        documentNumber: 'BA-2019-4471',
+        issuingInstitution: 'National Institute of Design',
+        issueDate: '2019-07-01',
+        expiryDate: '',
+        documentType: 'Degree certificate',
+        country: 'United Kingdom',
+      },
+      checks: [
+        {
+          label: 'Document is a relevant qualification',
+          passed: true,
+          note: 'A degree certificate is relevant for a design teaching application.',
+        },
+        {
+          label: 'Name matches the applicant',
+          passed: true,
+          note: 'The full name matches the application.',
+        },
+        {
+          label: 'Document is readable',
+          passed: true,
+          note: 'The certificate is legible.',
+        },
+        {
+          label: 'Issuing authority is fully visible',
+          passed: false,
+          note: 'Part of the institution seal is obscured by glare.',
+        },
+      ],
+      reasons: [
+        'The qualification looks relevant, but the issuing seal is partly obscured.',
+        'A human should confirm the institution before approving.',
+      ],
+      redFlags: ['Issuing authority is partially obscured.'],
+      provider: 'gemini',
+      model: 'gemini-2.5-flash',
+      promptVersion: 'teacher-verification-v1',
+      usage: { inputTokens: 1301, outputTokens: 356, totalTokens: 1657 },
+    },
+    aiHistory: [],
+    aiReviewedAt: '2026-10-22T14:06:11.000Z',
+    adminDecision: null,
+    decisionHistory: [],
+    decidedAt: null,
+    decidedBy: null,
+    notes: [],
+    createdAt: '2026-10-22T14:05:00.000Z',
+    updatedAt: '2026-10-22T14:06:11.000Z',
+  },
+]
