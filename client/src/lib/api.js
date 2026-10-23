@@ -14,6 +14,8 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 }
 
+const API_BASE = import.meta.env.VITE_API_URL || ''
+
 async function request(path, { method = 'GET', body, formData } = {}) {
   const headers = { Accept: 'application/json' }
   const token = tokenStore.get()
@@ -22,7 +24,7 @@ async function request(path, { method = 'GET', body, formData } = {}) {
 
   let response
   try {
-    response = await fetch(`/api${path}`, {
+    response = await fetch(`${API_BASE}/api${path}`, {
       method,
       headers,
       body: formData || (body !== undefined ? JSON.stringify(body) : undefined),
@@ -54,7 +56,7 @@ async function requestBlob(path) {
   if (token) headers.Authorization = `Bearer ${token}`
   let response
   try {
-    response = await fetch(`/api${path}`, { headers })
+    response = await fetch(`${API_BASE}/api${path}`, { headers })
   } catch {
     throw new ApiError('Cannot reach the campus server. Is the API running?', 0)
   }
