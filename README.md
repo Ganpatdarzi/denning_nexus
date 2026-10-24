@@ -471,15 +471,47 @@ The browser never receives the service role key. Admins request a five-minute si
 
 ### Can it be deployed now?
 
-**Yes — as a single-instance demo or soft launch.** The repository now supports a one-process production run:
+**Yes — multiple ways are supported:**
 
+#### Option 1: Vercel (full-stack, single project) — Recommended
+Deploy everything to [Vercel](https://vercel.com/) with [Supabase](https://supabase.com/) for the database and file storage.
+
+1. **Set up Supabase**
+   - Create a project, run [`server/db/supabase.sql`](server/db/supabase.sql) in the SQL Editor to create the `app_state` table (RLS locked to the service role).
+   - Create two private storage buckets: `assignments` and `teacher-verifications`.
+   - Copy your Project URL and `service_role` key from `Project Settings > API`.
+
+2. **Deploy to Vercel**
+   - Import `Ganpatdarzi/denning_nexus` to Vercel. The repo includes `vercel.json` and `api/index.js` to run the Express API as serverless functions alongside the Vite build.
+   - Add environment variables (Production):
+     | Key | Value |
+     | --- | --- |
+     | `NODE_ENV` | `production` |
+     | `JWT_SECRET` | A long random string |
+     | `CLIENT_ORIGIN` | `https://your-project-name.vercel.app` |
+     | `DB_DRIVER` | `supabase` |
+     | `SUPABASE_URL` | Your Supabase project URL |
+     | `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service_role key |
+     | `SUPABASE_STATE_TABLE` | `app_state` |
+     | `STORAGE_DRIVER` | `supabase` |
+     | `SUPABASE_BUCKET_ASSIGNMENTS` | `assignments` |
+     | `SUPABASE_BUCKET_TEACHER_DOCS` | `teacher-verifications` |
+     | `GEMINI_API_KEY` | (optional) — leave blank for local rubric/manual review fallback |
+
+3. **Finalize**
+   - After first deploy, copy the live Vercel URL and set/update `CLIENT_ORIGIN` to it, then redeploy.
+   - Visit `https://your-project-name.vercel.app/api/health` to confirm the API is running.
+   - The frontend calls relative `/api/*` paths, so no `VITE_API_URL` is needed for a single-domain Vercel deploy.
+
+> Note: On Vercel serverless, the filesystem is ephemeral. Use `DB_DRIVER=supabase` and `STORAGE_DRIVER=supabase` for persistence. With `json` + `local` storage, data will reset between cold starts/deploys.
+
+#### Option 2: Single Node process (Render, Railway, Fly.io, VPS)
 ```bash
 npm run install:all
 npm run build
 NODE_ENV=production JWT_SECRET="<long-random-secret>" npm start
 ```
-
-The Express server serves both `/api` and the built SPA from `client/dist`.
+The Express server serves both `/api` and the built SPA from `client/dist`. For persistence use a mounted disk with `DB_DRIVER=json` or `DB_DRIVER=supabase` with Supabase Storage.
 
 For anything involving real student data or horizontal scaling, finish the persistence migration first. Current blockers:
 
@@ -492,18 +524,19 @@ For anything involving real student data or horizontal scaling, finish the persi
 
 | Piece | Recommendation |
 | --- | --- |
-| Runtime | Render/Railway/Fly.io/VM with a **persistent disk** for `DATA_FILE`, or set `DB_DRIVER=supabase` |
-| Build | `npm run build` in the deploy step |
-| Start | `NODE_ENV=production npm start` |
-| Database | `DB_DRIVER=supabase` for durable data; JSON remains the zero-config default |
-| Files | `STORAGE_DRIVER=supabase` with private buckets |
+| Runtime (all-in-one) | **Vercel** (with `api/index.js` + `vercel.json`) using Supabase for DB/storage, or Render/Railway/Fly.io/VM with a **persistent disk** |
+| Runtime (split) | Vercel/Netlify for the client, Render/Koyeb/Railway for the API |
+| Build | `npm run build` in the deploy step (Vercel handles this automatically from `vercel.json`) |
+| Start | `NODE_ENV=production npm start` for a Node server; Vercel uses the serverless function wrapper for API routes |
+| Database | `DB_DRIVER=supabase` for durable data on serverless/ephemeral hosts; JSON remains the zero-config default for local/single-disk hosts |
+| Files | `STORAGE_DRIVER=supabase` with private buckets (`assignments`, `teacher-verifications`) |
 | Secrets | `JWT_SECRET`, `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in the host's secret manager |
 | TLS | Terminate HTTPS at the platform/proxy; `trust proxy` is enabled in production |
-| Origin | Set `CLIENT_ORIGIN` to the public URL |
+| Origin | Set `CLIENT_ORIGIN` to the public URL (must match your deployed frontend/domain) |
 | AI | Set `GEMINI_API_KEY`; leave it unset to run in manual-review mode |
 | Admin | Change/remove the seeded admin password before exposing the app |
 
-If you deploy the client separately (Vercel/Netlify), configure a rewrite/proxy so `/api/*` reaches the Express service. The client intentionally uses relative `/api` paths, and `CLIENT_ORIGIN` must list the public frontend origin.
+If you deploy the client separately (Vercel/Netlify), configure a rewrite/proxy so `/api/*` reaches the Express service. The client intentionally uses relative `/api` paths in dev and can use `VITE_API_URL` for a cross-origin split deploy, while a same-origin Vercel deploy works without it.
 
 ### Docker
 
@@ -523,13 +556,14 @@ Mount `/data` (not `/app/server/data`) so the separate database volume does not 
 
 - [ ] `JWT_SECRET` is long, random, and not the dev fallback.
 - [ ] `NODE_ENV=production`.
-- [ ] `CLIENT_ORIGIN` is the real HTTPS origin.
-- [ ] `DATA_FILE` points at a persistent volume **outside** the deploy directory, or `DB_DRIVER=supabase` is enabled.
+- [ ] `CLIENT_ORIGIN` is the real HTTPS origin (e.g. your Vercel domain).
+- [ ] If deploying to Vercel/serverless, use `DB_DRIVER=supabase` and `STORAGE_DRIVER=supabase` (filesystem is ephemeral).
+- [ ] `DATA_FILE` points at a persistent volume **outside** the deploy directory if using `DB_DRIVER=json` on a VM/container.
 - [ ] `db.json` is backed up, or Supabase Postgres is enabled and `app_state` is reachable.
-- [ ] Supabase buckets are private and `SUPABASE_SERVICE_ROLE_KEY` is server-only.
+- [ ] Supabase buckets (`assignments`, `teacher-verifications`) are private and `SUPABASE_SERVICE_ROLE_KEY` is server-only (never exposed to the client).
 - [ ] `GEMINI_API_KEY` is set, or manual-review mode is acceptable.
 - [ ] Seeded demo users/admin credentials are removed or rotated.
-- [ ] One API instance only while the document store is in use.
+- [ ] One API instance only while the document store is in use (or use Supabase with care).
 - [ ] Health check: `GET /api/health` returns `{ "ok": true }`.
 
 ---
