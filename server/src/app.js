@@ -1,6 +1,3 @@
-import fs from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import express from 'express'
 import cors from 'cors'
 import { config } from './config.js'
@@ -14,10 +11,6 @@ import teacherVerificationRoutes from './routes/teacherVerifications.js'
 import adminRoutes from './routes/admin.js'
 import { requireAuth, requireRole } from './middleware/auth.js'
 import { HttpError } from './utils/http.js'
-
-// `npm run build && npm start` serves the compiled SPA from the API itself, so
-// a single Node service can be deployed with no separate static host.
-const clientDist = fileURLToPath(new URL('../../client/dist', import.meta.url))
 
 export function createApp() {
   const app = express()
@@ -50,14 +43,6 @@ export function createApp() {
   app.use('/api', (req, res) => {
     res.status(404).json({ error: { message: `No API route matches ${req.method} ${req.originalUrl}.` } })
   })
-
-  if (config.isProd && fs.existsSync(clientDist)) {
-    app.use(express.static(clientDist, { index: false, maxAge: '1h' }))
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) return next()
-      res.sendFile(path.join(clientDist, 'index.html'))
-    })
-  }
 
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
