@@ -3305,7 +3305,7 @@
     margin-left: 0;
   }
 
-  .topbar-user span {
+  .topbar-user > span:not(.avatar) {
     display: none;
   }
 
@@ -5172,10 +5172,6 @@
 }
 
 @media (max-width: 440px) {
-  .assignments-page .stat-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .audit-meta-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -6415,5 +6411,78 @@
   .verify-table th:nth-child(2),
   .verify-table td:nth-child(2) {
     display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Small phones
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1080px) {
+  .landing-nav nav {
+    display: none;
+  }
+
+  .landing-nav-actions {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .landing-nav {
+    gap: 8px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .landing-nav .brand-word {
+    font-size: 17px;
+  }
+
+  .landing-nav .btn-primary svg {
+    display: none;
+  }
+
+  .topbar {
+    gap: 10px;
+  }
+
+  .stats-row,
+  .assignments-page .stat-grid {
+    gap: 10px;
+  }
+}
+
+/* Comfortable touch targets on phones and tablets, without changing the
+   compact desktop density. */
+@media (pointer: coarse), (max-width: 760px) {
+  .text-link {
+    padding: 5px 2px;
+    margin: -5px -2px;
+  }
+
+  .btn-xs {
+    padding: 8px 14px;
+  }
+
+  .segmented button,
+  .auth-switch button {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 350px) {
+  .landing-nav {
+    gap: 6px;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .landing-nav .brand-word {
+    font-size: 16px;
+  }
+
+  .assignments-page .stat-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

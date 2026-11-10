@@ -259,7 +259,7 @@ export default function AppShell() {
               )}
             </div>
 
-            <Link to="/app/profile" className="topbar-user">
+            <Link to="/app/profile" className="topbar-user" aria-label="Your profile">
               <Avatar person={user} size={34} />
               <span>
                 <strong>{user.name.split(' ')[0]}</strong>
