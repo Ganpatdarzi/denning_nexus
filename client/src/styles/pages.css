@@ -3070,6 +3070,7 @@
     transition: transform 0.24s ease;
     box-shadow: 30px 0 80px -30px rgba(0, 0, 0, 0.9);
     z-index: 60;
+    overscroll-behavior: contain;
   }
 
   .sidebar.open {
