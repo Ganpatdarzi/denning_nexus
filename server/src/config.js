@@ -9,11 +9,26 @@ const number = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }
 
+const parseOrigins = (value) =>
+  (value || '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+
+const configuredOrigins = parseOrigins(process.env.CLIENT_ORIGIN)
+
+// CLIENT_ORIGIN accepts a comma-separated list so a deployment can allow the
+// production domain, preview domains and a custom domain at the same time.
+const clientOrigins = [
+  ...new Set(['http://localhost:5173', 'http://127.0.0.1:5173', ...configuredOrigins]),
+]
+
 export const config = {
   port: number(process.env.PORT, 4000),
   jwtSecret: process.env.JWT_SECRET || 'denning-nexus-dev-secret-change-me',
   tokenTtl: process.env.JWT_TTL || '7d',
-  clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+  clientOrigin: configuredOrigins[0] || 'http://localhost:5173',
+  clientOrigins,
   dataFile: process.env.DATA_FILE || defaultDataFile,
   isProd: process.env.NODE_ENV === 'production',
 

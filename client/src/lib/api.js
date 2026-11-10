@@ -14,7 +14,16 @@ export const tokenStore = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || ''
+// VITE_API_URL wins when the dashboard sets it. Otherwise production builds
+// served from Vercel talk to the Render service directly (uploads can reach
+// 10 MB, which is above Vercel's 4.5 MB proxy limit), while local dev and the
+// single-service Docker build keep using relative /api paths.
+const DEFAULT_PROD_API = 'https://denning-nexus.onrender.com'
+const onVercel = typeof window !== 'undefined' && /\.vercel\.app$/i.test(window.location.hostname)
+const API_BASE = (
+  (import.meta.env.VITE_API_URL || '').trim() ||
+  (import.meta.env.PROD && onVercel ? DEFAULT_PROD_API : '')
+).replace(/\/+$/, '')
 
 async function request(path, { method = 'GET', body, formData } = {}) {
   const headers = { Accept: 'application/json' }

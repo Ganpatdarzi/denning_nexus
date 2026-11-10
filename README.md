@@ -353,6 +353,7 @@ NODE_ENV=development
 JWT_SECRET=replace-with-a-long-random-secret
 JWT_TTL=7d
 CLIENT_ORIGIN=http://localhost:5173
+# Comma-separate extra origins, e.g. CLIENT_ORIGIN=https://app.example.com,https://preview.example.com
 # DATA_FILE=./data/db.json
 
 GEMINI_API_KEY=
@@ -380,7 +381,7 @@ SUPABASE_BUCKET_TEACHER_DOCS=teacher-verifications
 | `NODE_ENV` | — | `production` enables production errors and SPA serving |
 | `JWT_SECRET` | dev fallback | **Change for any shared or production deployment** |
 | `JWT_TTL` | `7d` | Token lifetime |
-| `CLIENT_ORIGIN` | `http://localhost:5173` | Primary CORS origin (set to the public URL) |
+| `CLIENT_ORIGIN` | `http://localhost:5173` | CORS origin(s), comma-separated. `*.vercel.app` previews are also allowed |
 | `DATA_FILE` | `server/data/db.json` | JSON database location |
 | `GEMINI_API_KEY` | — | Enables Gemini auditing/verification |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model |
@@ -473,37 +474,38 @@ The browser never receives the service role key. Admins request a five-minute si
 
 **Yes — multiple ways are supported:**
 
-#### Option 1: Vercel (full-stack, single project) — Recommended
-Deploy everything to [Vercel](https://vercel.com/) with [Supabase](https://supabase.com/) for the database and file storage.
+#### Option 1: Vercel frontend + Render backend (current setup)
+The repo is wired for a split deploy: `client/` is built on Vercel and `server/` runs as a Docker web service on Render.
 
-1. **Set up Supabase**
-   - Create a project, run [`server/db/supabase.sql`](server/db/supabase.sql) in the SQL Editor to create the `app_state` table (RLS locked to the service role).
-   - Create two private storage buckets: `assignments` and `teacher-verifications`.
-   - Copy your Project URL and `service_role` key from `Project Settings > API`.
-
-2. **Deploy to Vercel**
-   - Import `Ganpatdarzi/denning_nexus` to Vercel. The repo includes `vercel.json` and `api/index.js` to run the Express API as serverless functions alongside the Vite build.
-   - Add environment variables (Production):
+1. **Render — API**
+   - New → Web Service → this repo, Runtime **Docker** (uses the root `Dockerfile`), Health Check Path `/api/health`.
+   - Environment:
      | Key | Value |
      | --- | --- |
      | `NODE_ENV` | `production` |
      | `JWT_SECRET` | A long random string |
-     | `CLIENT_ORIGIN` | `https://your-project-name.vercel.app` |
-     | `DB_DRIVER` | `supabase` |
+     | `CLIENT_ORIGIN` | `https://denning-nexus.vercel.app` (comma-separate extra domains) |
+     | `DB_DRIVER` | `supabase` (recommended) or `json` |
+     | `DATA_FILE` | `/data/db.json` — only with `json` **and** a persistent disk mounted at `/data` |
      | `SUPABASE_URL` | Your Supabase project URL |
      | `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service_role key |
      | `SUPABASE_STATE_TABLE` | `app_state` |
-     | `STORAGE_DRIVER` | `supabase` |
+     | `STORAGE_DRIVER` | `supabase` in production, `local` only with a disk |
      | `SUPABASE_BUCKET_ASSIGNMENTS` | `assignments` |
      | `SUPABASE_BUCKET_TEACHER_DOCS` | `teacher-verifications` |
      | `GEMINI_API_KEY` | (optional) — leave blank for local rubric/manual review fallback |
 
-3. **Finalize**
-   - After first deploy, copy the live Vercel URL and set/update `CLIENT_ORIGIN` to it, then redeploy.
-   - Visit `https://your-project-name.vercel.app/api/health` to confirm the API is running.
-   - The frontend calls relative `/api/*` paths, so no `VITE_API_URL` is needed for a single-domain Vercel deploy.
+   > Render services have an ephemeral filesystem. Without Supabase or a mounted disk, the JSON database and local uploads reset on every restart/redeploy. See [`server/db/supabase.sql`](server/db/supabase.sql) and the Supabase steps below.
 
-> Note: On Vercel serverless, the filesystem is ephemeral. Use `DB_DRIVER=supabase` and `STORAGE_DRIVER=supabase` for persistence. With `json` + `local` storage, data will reset between cold starts/deploys.
+2. **Vercel — client**
+   - Import the repo with **Root Directory** left at the repository root so the root `vercel.json` applies. It sets the build command to `cd client && npm install && npm run build`, the output to `client/dist`, and rewrites deep links (e.g. `/dashboard`) to the SPA.
+   - Optional environment variable `VITE_API_URL=https://denning-nexus.onrender.com`. When it is unset, production builds served from a `*.vercel.app` host fall back to that Render URL in `client/src/lib/api.js`; local dev and the single-service Docker build keep using relative `/api` paths.
+
+3. **Verify**
+   - `GET https://denning-nexus.onrender.com/api/health` should return `{ "ok": true }`.
+   - Sign in from the Vercel URL and hard-refresh a deep link such as `/dashboard`.
+
+> The earlier all-in-one Vercel serverless API (`api/index.js`) was removed in `1fb58b2`; Vercel now hosts only the static client.
 
 #### Option 2: Single Node process (Render, Railway, Fly.io, VPS)
 ```bash
@@ -524,19 +526,19 @@ For anything involving real student data or horizontal scaling, finish the persi
 
 | Piece | Recommendation |
 | --- | --- |
-| Runtime (all-in-one) | **Vercel** (with `api/index.js` + `vercel.json`) using Supabase for DB/storage, or Render/Railway/Fly.io/VM with a **persistent disk** |
-| Runtime (split) | Vercel/Netlify for the client, Render/Koyeb/Railway for the API |
-| Build | `npm run build` in the deploy step (Vercel handles this automatically from `vercel.json`) |
-| Start | `NODE_ENV=production npm start` for a Node server; Vercel uses the serverless function wrapper for API routes |
+| Runtime (all-in-one) | **Render/Railway/Fly.io/VM** with a **persistent disk**, using Supabase for DB/storage |
+| Runtime (split) | Vercel for the client, Render/Koyeb/Railway for the API |
+| Build | `npm run build` in the deploy step (Vercel uses the root `vercel.json`) |
+| Start | `NODE_ENV=production npm start` for the Node server |
 | Database | `DB_DRIVER=supabase` for durable data on serverless/ephemeral hosts; JSON remains the zero-config default for local/single-disk hosts |
 | Files | `STORAGE_DRIVER=supabase` with private buckets (`assignments`, `teacher-verifications`) |
 | Secrets | `JWT_SECRET`, `GEMINI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY` in the host's secret manager |
 | TLS | Terminate HTTPS at the platform/proxy; `trust proxy` is enabled in production |
-| Origin | Set `CLIENT_ORIGIN` to the public URL (must match your deployed frontend/domain) |
+| Origin | Set `CLIENT_ORIGIN` to the public URL(s), comma-separated if you use several |
 | AI | Set `GEMINI_API_KEY`; leave it unset to run in manual-review mode |
 | Admin | Change/remove the seeded admin password before exposing the app |
 
-If you deploy the client separately (Vercel/Netlify), configure a rewrite/proxy so `/api/*` reaches the Express service. The client intentionally uses relative `/api` paths in dev and can use `VITE_API_URL` for a cross-origin split deploy, while a same-origin Vercel deploy works without it.
+If you deploy the client separately (Vercel/Netlify), the client calls the Render API directly in production (or the URL in `VITE_API_URL`). Set `CLIENT_ORIGIN` on the API to the frontend origin; `*.vercel.app` preview deployments are allowed automatically. Uploads go straight to the API so they are not capped by Vercel's 4.5 MB proxy limit.
 
 ### Docker
 
@@ -556,7 +558,7 @@ Mount `/data` (not `/app/server/data`) so the separate database volume does not 
 
 - [ ] `JWT_SECRET` is long, random, and not the dev fallback.
 - [ ] `NODE_ENV=production`.
-- [ ] `CLIENT_ORIGIN` is the real HTTPS origin (e.g. your Vercel domain).
+- [ ] `CLIENT_ORIGIN` is the real HTTPS origin (e.g. your Vercel domain); comma-separate multiple origins.
 - [ ] If deploying to Vercel/serverless, use `DB_DRIVER=supabase` and `STORAGE_DRIVER=supabase` (filesystem is ephemeral).
 - [ ] `DATA_FILE` points at a persistent volume **outside** the deploy directory if using `DB_DRIVER=json` on a VM/container.
 - [ ] `db.json` is backed up, or Supabase Postgres is enabled and `app_state` is reachable.
@@ -572,7 +574,7 @@ Mount `/data` (not `/app/server/data`) so the separate database volume does not 
 
 - **`Port 4000 is already in use`** — stop the other API process, or set `PORT` in `server/.env` and update `client/vite.config.js` to proxy to the same port.
 - **Blank or stale UI after data changes** — hard-refresh the browser; some catalog data is fetched on route load.
-- **`Cannot reach the campus server`** — confirm `GET http://localhost:4000/api/health` returns `{ "ok": true }`.
+- **`Cannot reach the campus server`** — confirm `GET http://localhost:4000/api/health` returns `{ "ok": true }`. On the split deploy, open `https://denning-nexus.onrender.com/api/health`; a cold Render instance can take ~50 seconds to wake up.
 - **Lost demo data** — run `npm run reset:db` and restart the API.
 - **Teacher cannot reach the campus** — new teacher accounts are `pending`; they are routed to `/apply` until an administrator approves the verification application.
 - **AI verdict is “Needs human review”** — `GEMINI_API_KEY` is missing or the AI call failed. This is the safe fallback, not an error that blocks admins.

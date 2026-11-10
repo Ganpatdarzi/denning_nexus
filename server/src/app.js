@@ -19,7 +19,17 @@ export function createApp() {
   if (config.isProd) app.set('trust proxy', 1)
   app.use(
     cors({
-      origin: [config.clientOrigin, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin(origin, callback) {
+        // Requests without an Origin header (curl, server-to-server, the Vercel
+        // proxy's own fetch) are not subject to CORS. Preview deployments get
+        // their own *.vercel.app hostname, so allow that family too; auth still
+        // relies on the Bearer token, not cookies.
+        const allowed =
+          !origin ||
+          config.clientOrigins.includes(origin) ||
+          /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)
+        callback(null, allowed)
+      },
       credentials: false,
     }),
   )
